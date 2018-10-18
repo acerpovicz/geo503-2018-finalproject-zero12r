@@ -353,22 +353,15 @@ d = occ(query=sp, from=&#39;ebird&#39;,limit = 100) %&gt;% occ2df()</code></pre>
 <pre class="r"><code># Load coastline
 map=map_data(&quot;world&quot;)
 
-ggplot(d,aes(x=longitude,y=latitude))+
-  geom_polygon(aes(x=long,y=lat,group=group),data=map)+
-  geom_point(col=&quot;red&quot;)+
-  coord_equal()</code></pre>
-<div class="figure">
-<img src="index_files/figure-html/unnamed-chunk-4-1.png" alt="Map illustrating the known occurrence locations" width="576" />
-<p class="caption">
-Map illustrating the known occurrence locations
-</p>
-</div>
+#ggplot(d,aes(x=longitude,y=latitude))+
+ # geom_polygon(aes(x=long,y=lat,group=group),data=map)+
+  #geom_point(col=&quot;red&quot;)+
+  #coord_equal()</code></pre>
 </div>
 <div id="results" class="section level1">
 <h1>Results</h1>
 <p>Show tables, plots, etc. and describe them.</p>
-<pre class="r"><code>hist(d$latitude)</code></pre>
-<p><img src="index_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<pre class="r"><code>#hist(d$latitude)</code></pre>
 </div>
 <div id="conclusions" class="section level1">
 <h1>Conclusions</h1>

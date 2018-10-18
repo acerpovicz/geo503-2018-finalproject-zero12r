@@ -1,13 +1,21 @@
 ---
-title: "I have the best titles"
-author: Your name here
+title: "Visualizing Racial Skewing in Police Traffic Stop"
+author: "Rui Zhu"
 subtitle: Subtitle here if desired
 ---
 
 # Introduction
-My really awesome and complete introduction will go here.  
+A traffic stop, commonly called being pulled over, is a temporary detention of a driver of a vehicle by police to investigate a possible crime or minor violation of law (https://en.wikipedia.org/wiki/Traffic_stop). Police traffic stop is an extremely effective tool for law enforcement in various situations. However, there are some issues in police traffic stops.
 
-> I know words.  I have the best words.  ~ Donald Trump
+On June 15, 2015, Breaion King, a 26-year-old African-American elementary school teacher was stopped by a police officer in Austin, Texas. It should have been a routine traffic stop,but escalated into a dramatic arrest. King was pulled from her car and thrown to the ground by the officer, which was caught on police dashcams. This incident was later made into an Oscar nominated documentary.  
+
+Regardless of the behaviors of both sides, this event does reveal some racial issues in police traffic stops. Specifically, this project intends to focus on the bellowing problems:
+
+> Whether racial skewing exists in police stops.
+
+> If it exists, how does it distribute spatially.
+
+> If it exists, how does it change over time (by year).
 
 # Materials and methods
 
