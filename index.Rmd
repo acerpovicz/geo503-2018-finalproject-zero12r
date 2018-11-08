@@ -2,6 +2,7 @@
 title: "Visualizing Racial Skewing in Police Traffic Stop"
 author: "Rui Zhu"
 subtitle: Subtitle here if desired
+output: html_document
 ---
 
 # Introduction
@@ -19,7 +20,7 @@ Regardless of the behaviors of both sides, this event does reveal some racial is
 
 # Materials and methods
 
-Load all required packages:
+1. Load all required packages:
 
 ```{r, message=F}
 library(dplyr)
@@ -30,9 +31,14 @@ library(RColorBrewer)
 library(sf)
 ```
 
-1. 
+2. Read and filter data 
 ```{r}
+raw <- read.csv("data/FL_cleaned.csv")
 
+#remove race = ""
+data_filtered <- raw %>%
+  filter(driver_race != "") %>%
+  mutate(year = substr(stop_date,1,4))
 ```
 
 
