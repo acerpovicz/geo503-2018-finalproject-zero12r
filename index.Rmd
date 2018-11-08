@@ -5,13 +5,16 @@ subtitle: Subtitle here if desired
 output: html_document
 ---
 
-# Introduction
-A traffic stop, commonly called being pulled over, is a temporary detention of a driver of a vehicle by police to investigate a possible crime or minor violation of law (https://en.wikipedia.org/wiki/Traffic_stop). Police traffic stop is an extremely effective tool for law enforcement in various situations. However, there are some issues in police traffic stops.
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 
-On June 15, 2015, Breaion King, a 26-year-old African-American elementary school teacher was stopped by a police officer in Austin, Texas. It should have been a routine traffic stop,but escalated into a dramatic arrest. King was pulled from her car and thrown to the ground by the officer, which was caught on police dashcams. This incident was later made into an Oscar nominated documentary (https://www.hbo.com/documentaries/traffic-stop).  
+# Introduction
+A traffic stop, commonly called being pulled over, is a temporary detention of a driver of a vehicle by police to investigate a possible crime or minor violation of law (https://en.wikipedia.org/wiki/Traffic_stop). Police traffic stop is an extremely effective tool for law enforcement in various situations. In 2010, a routine traffic stop resulted in the arrest of the driver, who did several robberies in Miami-Dade County, and the recovery of a firearm. However, there are some issues existing in police traffic stop.
+
+On June 15, 2015, Breaion King, a 26-year-old African-American elementary school teacher was stopped by a police officer in Austin, Texas. It should have been a routine traffic stop, but escalated into a dramatic arrest. King was pulled from her car and thrown to the ground by the officer, which was caught by police dash cams. En route to jail, King engaged her escorting officer in a revealing conversation about race and law enforcement in America. This incident was later made into an Oscar nominated documentary named [Traffic Stop](https://www.hbo.com/documentaries/traffic-stop).
 
 Regardless of the behaviors of both sides, this event does reveal some racial issues in police traffic stops. Specifically, this project intends to focus on the bellowing problems:
-
 > Whether racial skewing exists in police stops.
 
 > If it exists, how does it distribute spatially.
@@ -20,7 +23,7 @@ Regardless of the behaviors of both sides, this event does reveal some racial is
 
 # Materials and methods
 
-1. Load all required packages:
+###1. Load all required packages
 
 ```{r, message=F}
 library(dplyr)
@@ -31,7 +34,10 @@ library(RColorBrewer)
 library(sf)
 ```
 
-2. Read and filter data 
+###2. Read and filter data 
+
+Read police stop data of Florida. The data is from the [Stanford Open Policing Project](https://openpolicing.stanford.edu/data/). It has records of stop date, stop location, driver race, driver gender and so on. Then generate field `year` from the field `stop_date` in the raw data. After doing this, we get the `data_filtered`.
+
 ```{r}
 raw <- read.csv("data/FL_cleaned.csv")
 
@@ -41,13 +47,150 @@ data_filtered <- raw %>%
   mutate(year = substr(stop_date,1,4))
 ```
 
+###3. Tidy preprocessed data
+
+Tidy `data_filtered` to calculate the percentage of drivers (% Drivers) by race in police stop. Then we get `data1`, which is used to draw graphs later.
+``` {r}
+data1 <- data_filtered %>%
+  group_by(year, driver_race) %>%
+  summarise(SumByRaceYear = n()) %>%
+  nest(- year) %>%
+  mutate(SumByYear = map(data, ~ sum(.$SumByRaceYear))) %>%
+  unnest(SumByYear) %>%
+  unnest(data) %>%
+  mutate(Percent = SumByRaceYear / SumByYear)
+data1
+
+```
+
+###4. Examine racial skewing in police stop
+
+For a racial group A, it is possible to compare its percentage of drivers in police stop with its percentage of population in FL to examine racial skewing in police stop. Here, we define a variable `ratio`:
+$$\displaystyle ratio = \frac{\text{% Drivers in racial group A}}{\text{% Population in racial group A}} - 1$$
+The derived variable `ratio` can be used to indicate racial skewing in police stop. If $ratio > 0$, people in racial group A are more likely to be stopped by police. This implies that racial skewing exists in police stop. 
+
+The field `driver_race` in police stop data classifies driver ethinicity into five racial groups, namely **White**, **Black**, **Hispanic**, **Asian** and **Other**.
+```{r}
+levels(data1$driver_race)
+```
+
+So we can evaluate `ratio` for each of the five racial groups. Then dataset `data2` is derived.
+```{r}
+pop <- read.csv("data/FL_pop.csv")
+pop_percent <- pop %>% 
+  summarise(year = "2016", total = sum(Total),white = sum(White),black = sum(Black),asian = sum(Asian),hispanic = sum(Hispanic),other = sum(Other)) %>%
+  mutate(pW = white/total, pB = black/total, pA = asian/total, pH = hispanic/total, pO = other/total)
+
+#calculate ratio
+data2 <- data1 %>% filter(year == "2016")
+data2$ratio <- data2[data2$driver_race == "Asian",]$Percent / pop_percent$pA
+data2[data2$driver_race == "Black",]$ratio <- data2[data2$driver_race == "Black",]$Percent / pop_percent$pB
+data2[data2$driver_race == "Hispanic",]$ratio <- data2[data2$driver_race == "Hispanic",]$Percent / pop_percent$pH
+data2[data2$driver_race == "Other",]$ratio <- data2[data2$driver_race == "Other",]$Percent / pop_percent$pO
+data2[data2$driver_race == "White",]$ratio <- data2[data2$driver_race == "White",]$Percent / pop_percent$pW
+
+data2$ratio <- data2$ratio - 1
+data2$type <- ifelse(data2$ratio > 0, "above","below")
+data2
+```
+
+###5. Join police stop data and FL spatial data
+
+In order to explore racial skewing in police stop spatially, we have to join our police stop data `data_filtered` and spatial data `map`. Then calculate the percentage of drivers in different racial groups by county. By dong this, we get `map_data`.
+``` {r}
+map <- st_read("data/FL.shp")
+
+#remove records where "countyfips" = NA
+data_bycounty <- data_filtered %>%
+  filter(is.na(county_fips) == F) %>%
+  group_by(county_fips,driver_race) %>%
+  summarise(SumByRaceCounty = n()) %>%
+  nest(- county_fips) %>%
+  mutate(SumByCounty = map(data, ~ sum(.$SumByRaceCounty))) %>%
+  unnest(SumByCounty) %>%
+  unnest(data)%>%
+  mutate(Percent = SumByRaceCounty / SumByCounty)
+
+data_bycounty$county_fips <- factor(data_bycounty$county_fips)  
+map_data <- left_join(map, data_bycounty, by=c("GEOID" = "county_fips"))
+head(map_data)
+```
+
+###6. Examine racial skewing in police stop spatially
+
+Based on the dataset `map_data` and above equation evaluating `ratio`, we calculate `ratio` for each racial group by county.
+```{r}
+pop_percent_bycounty <- pop %>%
+  mutate(pW = White/Total, pB = Black/Total, pA = Asian/Total, pH = Hispanic/Total, pO = Other/Total)
+pop_percent_bycounty$GEOID <- factor(pop_percent_bycounty$GEOID)
+
+#calculate ratio by county
+map_data2 <- left_join(map_data,pop_percent_bycounty,by="GEOID")
+map_data2$ratio <- 0
+map_data2[map_data2$driver_race == "Asian",]$ratio <- map_data2[map_data2$driver_race == "Asian",]$Percent / map_data2[map_data2$driver_race == "Asian",]$pA
+map_data2[map_data2$driver_race == "Black",]$ratio <- map_data2[map_data2$driver_race == "Black",]$Percent / map_data2[map_data2$driver_race == "Black",]$pB
+map_data2[map_data2$driver_race == "Hispanic",]$ratio <- map_data2[map_data2$driver_race == "Hispanic",]$Percent / map_data2[map_data2$driver_race == "Hispanic",]$pH
+map_data2[map_data2$driver_race == "Other",]$ratio <- map_data2[map_data2$driver_race == "Other",]$Percent / map_data2[map_data2$driver_race == "Other",]$pO
+map_data2[map_data2$driver_race == "White",]$ratio <- map_data2[map_data2$driver_race == "White",]$Percent / map_data2[map_data2$driver_race == "White",]$pW
+
+map_data2$ratio <- map_data2$ratio - 1
+head(map_data2)
+```
 
 # Results
 
-Show tables, plots, etc. and describe them.
+After data process, we have four datasets:
+
+1. data1. It contains the percentage of drivers for each racial group in police stop. 
+2. data2. It contains the ratios for each racail group. 
+3. map_data. It contains the percentage of drivers for each racial group by county. 
+4. map_data2. It contains the ratios for each racail group by county. 
+We can used the four datasets to do visualization and analyses.
+
+###1. Using `data1` to display the percentage of drivers in police stop by race
 
 ```{r}
-#hist(d$latitude)
+ggplot(data1, aes(driver_race, Percent)) +
+  geom_col(aes(fill = driver_race)) +
+  facet_wrap(~year) +
+  scale_fill_brewer(palette = "Spectral") +
+  #scale_fill_manual(values = wes_palette("Darjeeling2",5))
+  labs(title="Percentage of Drivers in Police Stops by Race",
+       x="Driver Race", y="Percentage of Drivers")
+```
+
+``` {r}
+ggplot(data1, aes(year, Percent, group = driver_race, colour = driver_race)) +
+  geom_point(size = 4) +
+  geom_line(aes(linetype = driver_race),size = 1.3) +
+  labs(title="The Change of Percentage of Drivers in Police Stops over Time by Race",
+       x="Year", y="Percentage of Drivers")
+```
+
+###2. Using `data2` to display racial skewing in police stop
+```{r}
+ggplot(data2, aes(driver_race,ratio)) +
+  geom_col(aes(fill = type)) +
+  coord_flip() +
+  labs(title="Racial Skewing in Police Stop",
+       x="Driver Race", y="Ratio")
+```
+
+###3. Using `map_data` to display the distributions of %Drivers by race
+``` {r}
+#devtools::install_github("tidyverse/ggplot2")
+ggplot(map_data) +
+  geom_sf(aes(fill = Percent)) +
+  facet_wrap(~driver_race) +
+  scale_fill_gradient(low = "yellow", high = "brown")
+```
+
+###4. Using `map_data2` to display the distribution of racial skewing
+```{r}
+ggplot(map_data2) +
+  geom_sf(aes(fill = ratio)) +
+  scale_fill_gradient2(low = "red",mid = "white",high = "blue",midpoint = 0)+
+  facet_wrap(~driver_race)
 ```
 
 # Conclusions

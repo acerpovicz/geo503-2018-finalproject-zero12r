@@ -9,10 +9,10 @@
 <meta name="generator" content="pandoc" />
 
 
-<meta name="author" content="Your name here" />
+<meta name="author" content="Rui Zhu" />
 
 
-<title>I have the best titles</title>
+<title>Visualizing Racial Skewing in Police Traffic Stop</title>
 
 <script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -303,65 +303,257 @@ div.tocify {
 
 
 
-<h1 class="title toc-ignore">I have the best titles</h1>
+<h1 class="title toc-ignore">Visualizing Racial Skewing in Police Traffic Stop</h1>
 <h3 class="subtitle"><em>Subtitle here if desired</em></h3>
-<h4 class="author"><em>Your name here</em></h4>
+<h4 class="author"><em>Rui Zhu</em></h4>
 
 </div>
 
 
 <div id="introduction" class="section level1">
 <h1>Introduction</h1>
-<p>My really awesome and complete introduction will go here.</p>
+<p>A traffic stop, commonly called being pulled over, is a temporary detention of a driver of a vehicle by police to investigate a possible crime or minor violation of law (<a href="https://en.wikipedia.org/wiki/Traffic_stop" class="uri">https://en.wikipedia.org/wiki/Traffic_stop</a>). Police traffic stop is an extremely effective tool for law enforcement in various situations. In 2010, a routine traffic stop resulted in the arrest of the driver, who did several robberies in Miami-Dade County, and the recovery of a firearm. However, there are some issues existing in police traffic stop.</p>
+<p>On June 15, 2015, Breaion King, a 26-year-old African-American elementary school teacher was stopped by a police officer in Austin, Texas. It should have been a routine traffic stop, but escalated into a dramatic arrest. King was pulled from her car and thrown to the ground by the officer, which was caught by police dash cams. En route to jail, King engaged her escorting officer in a revealing conversation about race and law enforcement in America. This incident was later made into an Oscar nominated documentary named <a href="https://www.hbo.com/documentaries/traffic-stop">Traffic Stop</a>.</p>
+<p>Regardless of the behaviors of both sides, this event does reveal some racial issues in police traffic stops. Specifically, this project intends to focus on the bellowing problems: &gt; Whether racial skewing exists in police stops.</p>
 <blockquote>
-<p>I know words. I have the best words. ~ Donald Trump</p>
+<p>If it exists, how does it distribute spatially.</p>
+</blockquote>
+<blockquote>
+<p>If it exists, how does it change over time (by year).</p>
 </blockquote>
 </div>
 <div id="materials-and-methods" class="section level1">
 <h1>Materials and methods</h1>
-<p>Narrative and most code will go here. Describe what you are doing and show how to do it (with code).</p>
-<p>You can do bullets like this:</p>
-<ul>
-<li>The first most important thing</li>
-<li>The second most important thing</li>
-<li>The third most important thing</li>
-</ul>
-<p>You can do numbers like this:</p>
-<ol style="list-style-type: decimal">
-<li>The first most important thing</li>
-<li>The second most important thing</li>
-<li>The third most important thing</li>
-</ol>
-<p>See <a href="http://rmarkdown.rstudio.com/" class="uri">http://rmarkdown.rstudio.com/</a> for all the amazing things you can do.</p>
-<p>Here’s my first code chunk.</p>
-<pre class="r"><code>1+2</code></pre>
-<pre><code>## [1] 3</code></pre>
-<p>Load any required packages in a code chunk (you may need to install some packages):</p>
+<div id="load-all-required-packages" class="section level3">
+<h3>1. Load all required packages</h3>
 <pre class="r"><code>library(dplyr)
+library(tidyr)
+library(purrr)
 library(ggplot2)
-library(maps)
-library(spocc)
-knitr::opts_chunk$set(cache=TRUE)  # cache the results for quick compiling</code></pre>
-<p>We are going to use the <code>occ()</code> function to download <em>occurrence</em> records for the American robin (<em>Turdus migratorius</em>) from the <a href="gbif.org">Global Biodiversity Information Facility</a>.</p>
-<p><img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/Turdus-migratorius-002.jpg" alt="alt text" width="200"> <small><small><small>Licensed under CC BY-SA 3.0 via <a href="https://commons.wikimedia.org/wiki/File:Turdus-migratorius-002.jpg#/media/File:Turdus-migratorius-002.jpg">Wikimedia Commons</a></small></small></small></p>
-<pre class="r"><code>## define which species to query
-sp=&#39;Turdus migratorius&#39;
+library(RColorBrewer)
+library(sf)</code></pre>
+</div>
+<div id="read-and-filter-data" class="section level3">
+<h3>2. Read and filter data</h3>
+<p>Read police stop data of Florida. The data is from the <a href="https://openpolicing.stanford.edu/data/">Stanford Open Policing Project</a>. It has records of stop date, stop location, driver race, driver gender and so on. Then generate field <code>year</code> from the field <code>stop_date</code> in the raw data. After doing this, we get the <code>data_filtered</code>.</p>
+<pre class="r"><code>raw &lt;- read.csv(&quot;data/FL_cleaned.csv&quot;)
 
-## run the query and convert to data.frame()
-d = occ(query=sp, from=&#39;ebird&#39;,limit = 100) %&gt;% occ2df()</code></pre>
-<p>This can take a few seconds.</p>
-<pre class="r"><code># Load coastline
-map=map_data(&quot;world&quot;)
+#remove race = &quot;&quot;
+data_filtered &lt;- raw %&gt;%
+  filter(driver_race != &quot;&quot;) %&gt;%
+  mutate(year = substr(stop_date,1,4))</code></pre>
+</div>
+<div id="tidy-preprocessed-data" class="section level3">
+<h3>3. Tidy preprocessed data</h3>
+<p>Tidy <code>data_filtered</code> to calculate the percentage of drivers (% Drivers) by race in police stop. Then we get <code>data1</code>, which is used to draw graphs later.</p>
+<pre class="r"><code>data1 &lt;- data_filtered %&gt;%
+  group_by(year, driver_race) %&gt;%
+  summarise(SumByRaceYear = n()) %&gt;%
+  nest(- year) %&gt;%
+  mutate(SumByYear = map(data, ~ sum(.$SumByRaceYear))) %&gt;%
+  unnest(SumByYear) %&gt;%
+  unnest(data) %&gt;%
+  mutate(Percent = SumByRaceYear / SumByYear)
+data1</code></pre>
+<pre><code>## # A tibble: 35 x 5
+##    year  SumByYear driver_race SumByRaceYear Percent
+##    &lt;chr&gt;     &lt;int&gt; &lt;fct&gt;               &lt;int&gt;   &lt;dbl&gt;
+##  1 2010     675109 Asian                7626  0.0113
+##  2 2010     675109 Black              124668  0.185 
+##  3 2010     675109 Hispanic           128240  0.190 
+##  4 2010     675109 Other               15897  0.0235
+##  5 2010     675109 White              398678  0.591 
+##  6 2011     869799 Asian               10527  0.0121
+##  7 2011     869799 Black              163210  0.188 
+##  8 2011     869799 Hispanic           177359  0.204 
+##  9 2011     869799 Other               21563  0.0248
+## 10 2011     869799 White              497140  0.572 
+## # ... with 25 more rows</code></pre>
+</div>
+<div id="examine-racial-skewing-in-police-stop" class="section level3">
+<h3>4. Examine racial skewing in police stop</h3>
+<p>For a racial group A, it is possible to compare its percentage of drivers in police stop with its percentage of population in FL to examine racial skewing in police stop. Here, we define a variable <code>ratio</code>: <span class="math display">\[\displaystyle ratio = \frac{\text{% Drivers in racial group A}}{\text{% Population in racial group A}} - 1\]</span> The derived variable <code>ratio</code> can be used to indicate racial skewing in police stop. If <span class="math inline">\(ratio &gt; 0\)</span>, people in racial group A are more likely to be stopped by police. This implies that racial skewing exists in police stop.</p>
+<p>The field <code>driver_race</code> in police stop data classifies driver ethinicity into five racial groups, namely <strong>White</strong>, <strong>Black</strong>, <strong>Hispanic</strong>, <strong>Asian</strong> and <strong>Other</strong>.</p>
+<pre class="r"><code>levels(data1$driver_race)</code></pre>
+<pre><code>## [1] &quot;&quot;         &quot;Asian&quot;    &quot;Black&quot;    &quot;Hispanic&quot; &quot;Other&quot;    &quot;White&quot;</code></pre>
+<p>So we can evaluate <code>ratio</code> for each of the five racial groups. Then dataset <code>data2</code> is derived.</p>
+<pre class="r"><code>pop &lt;- read.csv(&quot;data/FL_pop.csv&quot;)
+pop_percent &lt;- pop %&gt;% 
+  summarise(year = &quot;2016&quot;, total = sum(Total),white = sum(White),black = sum(Black),asian = sum(Asian),hispanic = sum(Hispanic),other = sum(Other)) %&gt;%
+  mutate(pW = white/total, pB = black/total, pA = asian/total, pH = hispanic/total, pO = other/total)
 
-#ggplot(d,aes(x=longitude,y=latitude))+
- # geom_polygon(aes(x=long,y=lat,group=group),data=map)+
-  #geom_point(col=&quot;red&quot;)+
-  #coord_equal()</code></pre>
+#calculate ratio
+data2 &lt;- data1 %&gt;% filter(year == &quot;2016&quot;)
+data2$ratio &lt;- data2[data2$driver_race == &quot;Asian&quot;,]$Percent / pop_percent$pA
+data2[data2$driver_race == &quot;Black&quot;,]$ratio &lt;- data2[data2$driver_race == &quot;Black&quot;,]$Percent / pop_percent$pB
+data2[data2$driver_race == &quot;Hispanic&quot;,]$ratio &lt;- data2[data2$driver_race == &quot;Hispanic&quot;,]$Percent / pop_percent$pH
+data2[data2$driver_race == &quot;Other&quot;,]$ratio &lt;- data2[data2$driver_race == &quot;Other&quot;,]$Percent / pop_percent$pO
+data2[data2$driver_race == &quot;White&quot;,]$ratio &lt;- data2[data2$driver_race == &quot;White&quot;,]$Percent / pop_percent$pW
+
+data2$ratio &lt;- data2$ratio - 1
+data2$type &lt;- ifelse(data2$ratio &gt; 0, &quot;above&quot;,&quot;below&quot;)
+data2</code></pre>
+<pre><code>## # A tibble: 5 x 7
+##   year  SumByYear driver_race SumByRaceYear Percent   ratio type 
+##   &lt;chr&gt;     &lt;int&gt; &lt;fct&gt;               &lt;int&gt;   &lt;dbl&gt;   &lt;dbl&gt; &lt;chr&gt;
+## 1 2016     581316 Asian                8009  0.0138 -0.463  below
+## 2 2016     581316 Black              117186  0.202   0.305  above
+## 3 2016     581316 Hispanic           143423  0.247   0.0232 above
+## 4 2016     581316 Other               15223  0.0262  0.142  above
+## 5 2016     581316 White              297475  0.512  -0.0794 below</code></pre>
+</div>
+<div id="join-police-stop-data-and-fl-spatial-data" class="section level3">
+<h3>5. Join police stop data and FL spatial data</h3>
+<p>In order to explore racial skewing in police stop spatially, we have to join our police stop data <code>data_filtered</code> and spatial data <code>map</code>. Then calculate the percentage of drivers in different racial groups by county. By dong this, we get <code>map_data</code>.</p>
+<pre class="r"><code>map &lt;- st_read(&quot;data/FL.shp&quot;)</code></pre>
+<pre><code>## Reading layer `FL&#39; from data source `C:\Users\ruizh\Documents\geo503-2018-finalproject-zero12r\data\FL.shp&#39; using driver `ESRI Shapefile&#39;
+## Simple feature collection with 67 features and 2 fields
+## geometry type:  MULTIPOLYGON
+## dimension:      XY
+## bbox:           xmin: -87.6349 ymin: 24.39631 xmax: -79.97431 ymax: 31.00097
+## epsg (SRID):    4269
+## proj4string:    +proj=longlat +datum=NAD83 +no_defs</code></pre>
+<pre class="r"><code>#remove records where &quot;countyfips&quot; = NA
+data_bycounty &lt;- data_filtered %&gt;%
+  filter(is.na(county_fips) == F) %&gt;%
+  group_by(county_fips,driver_race) %&gt;%
+  summarise(SumByRaceCounty = n()) %&gt;%
+  nest(- county_fips) %&gt;%
+  mutate(SumByCounty = map(data, ~ sum(.$SumByRaceCounty))) %&gt;%
+  unnest(SumByCounty) %&gt;%
+  unnest(data)%&gt;%
+  mutate(Percent = SumByRaceCounty / SumByCounty)
+
+data_bycounty$county_fips &lt;- factor(data_bycounty$county_fips)  
+map_data &lt;- left_join(map, data_bycounty, by=c(&quot;GEOID&quot; = &quot;county_fips&quot;))
+head(map_data)</code></pre>
+<pre><code>## Simple feature collection with 6 features and 6 fields
+## geometry type:  MULTIPOLYGON
+## dimension:      XY
+## bbox:           xmin: -84.73785 ymin: 28.43329 xmax: -82.05447 ymax: 30.3035
+## epsg (SRID):    4269
+## proj4string:    +proj=longlat +datum=NAD83 +no_defs
+##   GEOID     NAME SumByCounty driver_race SumByRaceCounty     Percent
+## 1 12053 Hernando       87413       Asian             828 0.009472275
+## 2 12053 Hernando       87413       Black            5793 0.066271607
+## 3 12053 Hernando       87413    Hispanic            6891 0.078832668
+## 4 12053 Hernando       87413       Other            1475 0.016873920
+## 5 12053 Hernando       87413       White           72426 0.828549529
+## 6 12129  Wakulla       37462       Asian             178 0.004751482
+##                         geometry
+## 1 MULTIPOLYGON (((-82.55258 2...
+## 2 MULTIPOLYGON (((-82.55258 2...
+## 3 MULTIPOLYGON (((-82.55258 2...
+## 4 MULTIPOLYGON (((-82.55258 2...
+## 5 MULTIPOLYGON (((-82.55258 2...
+## 6 MULTIPOLYGON (((-84.50434 3...</code></pre>
+</div>
+<div id="examine-racial-skewing-in-police-stop-spatially" class="section level3">
+<h3>6. Examine racial skewing in police stop spatially</h3>
+<p>Based on the dataset <code>map_data</code> and above equation evaluating <code>ratio</code>, we calculate <code>ratio</code> for each racial group by county.</p>
+<pre class="r"><code>pop_percent_bycounty &lt;- pop %&gt;%
+  mutate(pW = White/Total, pB = Black/Total, pA = Asian/Total, pH = Hispanic/Total, pO = Other/Total)
+pop_percent_bycounty$GEOID &lt;- factor(pop_percent_bycounty$GEOID)
+
+#calculate ratio by county
+map_data2 &lt;- left_join(map_data,pop_percent_bycounty,by=&quot;GEOID&quot;)
+map_data2$ratio &lt;- 0
+map_data2[map_data2$driver_race == &quot;Asian&quot;,]$ratio &lt;- map_data2[map_data2$driver_race == &quot;Asian&quot;,]$Percent / map_data2[map_data2$driver_race == &quot;Asian&quot;,]$pA
+map_data2[map_data2$driver_race == &quot;Black&quot;,]$ratio &lt;- map_data2[map_data2$driver_race == &quot;Black&quot;,]$Percent / map_data2[map_data2$driver_race == &quot;Black&quot;,]$pB
+map_data2[map_data2$driver_race == &quot;Hispanic&quot;,]$ratio &lt;- map_data2[map_data2$driver_race == &quot;Hispanic&quot;,]$Percent / map_data2[map_data2$driver_race == &quot;Hispanic&quot;,]$pH
+map_data2[map_data2$driver_race == &quot;Other&quot;,]$ratio &lt;- map_data2[map_data2$driver_race == &quot;Other&quot;,]$Percent / map_data2[map_data2$driver_race == &quot;Other&quot;,]$pO
+map_data2[map_data2$driver_race == &quot;White&quot;,]$ratio &lt;- map_data2[map_data2$driver_race == &quot;White&quot;,]$Percent / map_data2[map_data2$driver_race == &quot;White&quot;,]$pW
+
+map_data2$ratio &lt;- map_data2$ratio - 1
+head(map_data2)</code></pre>
+<pre><code>## Simple feature collection with 6 features and 19 fields
+## geometry type:  MULTIPOLYGON
+## dimension:      XY
+## bbox:           xmin: -84.73785 ymin: 28.43329 xmax: -82.05447 ymax: 30.3035
+## epsg (SRID):    4269
+## proj4string:    +proj=longlat +datum=NAD83 +no_defs
+##   GEOID     NAME SumByCounty driver_race SumByRaceCounty     Percent
+## 1 12053 Hernando       87413       Asian             828 0.009472275
+## 2 12053 Hernando       87413       Black            5793 0.066271607
+## 3 12053 Hernando       87413    Hispanic            6891 0.078832668
+## 4 12053 Hernando       87413       Other            1475 0.016873920
+## 5 12053 Hernando       87413       White           72426 0.828549529
+## 6 12129  Wakulla       37462       Asian             178 0.004751482
+##                       Name  Total  White Black Asian Hispanic Other
+## 1 Hernando County, Florida 176797 141603  8607  1914    20459  4214
+## 2 Hernando County, Florida 176797 141603  8607  1914    20459  4214
+## 3 Hernando County, Florida 176797 141603  8607  1914    20459  4214
+## 4 Hernando County, Florida 176797 141603  8607  1914    20459  4214
+## 5 Hernando County, Florida 176797 141603  8607  1914    20459  4214
+## 6  Wakulla County, Florida  31314  24754  4698   128     1152   582
+##          pW         pB          pA         pH         pO
+## 1 0.8009355 0.04868295 0.010825976 0.11572029 0.02383525
+## 2 0.8009355 0.04868295 0.010825976 0.11572029 0.02383525
+## 3 0.8009355 0.04868295 0.010825976 0.11572029 0.02383525
+## 4 0.8009355 0.04868295 0.010825976 0.11572029 0.02383525
+## 5 0.8009355 0.04868295 0.010825976 0.11572029 0.02383525
+## 6 0.7905090 0.15002874 0.004087629 0.03678866 0.01858594
+##                         geometry       ratio
+## 1 MULTIPOLYGON (((-82.55258 2... -0.12504187
+## 2 MULTIPOLYGON (((-82.55258 2...  0.36128980
+## 3 MULTIPOLYGON (((-82.55258 2... -0.31876538
+## 4 MULTIPOLYGON (((-82.55258 2... -0.29206016
+## 5 MULTIPOLYGON (((-82.55258 2...  0.03447717
+## 6 MULTIPOLYGON (((-84.50434 3...  0.16240540</code></pre>
+</div>
 </div>
 <div id="results" class="section level1">
 <h1>Results</h1>
-<p>Show tables, plots, etc. and describe them.</p>
-<pre class="r"><code>#hist(d$latitude)</code></pre>
+<p>After data process, we have four datasets:</p>
+<ol style="list-style-type: decimal">
+<li>data1. It contains the percentage of drivers for each racial group in police stop.</li>
+<li>data2. It contains the ratios for each racail group.</li>
+<li>map_data. It contains the percentage of drivers for each racial group by county.</li>
+<li>map_data2. It contains the ratios for each racail group by county. We can used the four datasets to do visualization and analyses.</li>
+</ol>
+<div id="using-data1-to-display-the-percentage-of-drivers-in-police-stop-by-race" class="section level3">
+<h3>1. Using <code>data1</code> to display the percentage of drivers in police stop by race</h3>
+<pre class="r"><code>ggplot(data1, aes(driver_race, Percent)) +
+  geom_col(aes(fill = driver_race)) +
+  facet_wrap(~year) +
+  scale_fill_brewer(palette = &quot;Spectral&quot;) +
+  #scale_fill_manual(values = wes_palette(&quot;Darjeeling2&quot;,5))
+  labs(title=&quot;Percentage of Drivers in Police Stops by Race&quot;,
+       x=&quot;Driver Race&quot;, y=&quot;Percentage of Drivers&quot;)</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
+<pre class="r"><code>ggplot(data1, aes(year, Percent, group = driver_race, colour = driver_race)) +
+  geom_point(size = 4) +
+  geom_line(aes(linetype = driver_race),size = 1.3) +
+  labs(title=&quot;The Change of Percentage of Drivers in Police Stops over Time by Race&quot;,
+       x=&quot;Year&quot;, y=&quot;Percentage of Drivers&quot;)</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+</div>
+<div id="using-data2-to-display-racial-skewing-in-police-stop" class="section level3">
+<h3>2. Using <code>data2</code> to display racial skewing in police stop</h3>
+<pre class="r"><code>ggplot(data2, aes(driver_race,ratio)) +
+  geom_col(aes(fill = type)) +
+  coord_flip() +
+  labs(title=&quot;Racial Skewing in Police Stop&quot;,
+       x=&quot;Driver Race&quot;, y=&quot;Ratio&quot;)</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-10-1.png" width="672" /></p>
+</div>
+<div id="using-map_data-to-display-the-distributions-of-drivers-by-race" class="section level3">
+<h3>3. Using <code>map_data</code> to display the distributions of %Drivers by race</h3>
+<pre class="r"><code>#devtools::install_github(&quot;tidyverse/ggplot2&quot;)
+ggplot(map_data) +
+  geom_sf(aes(fill = Percent)) +
+  facet_wrap(~driver_race) +
+  scale_fill_gradient(low = &quot;yellow&quot;, high = &quot;brown&quot;)</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-11-1.png" width="672" /></p>
+</div>
+<div id="using-map_data2-to-display-the-distribution-of-racial-skewing" class="section level3">
+<h3>4. Using <code>map_data2</code> to display the distribution of racial skewing</h3>
+<pre class="r"><code>ggplot(map_data2) +
+  geom_sf(aes(fill = ratio)) +
+  scale_fill_gradient2(low = &quot;red&quot;,mid = &quot;white&quot;,high = &quot;blue&quot;,midpoint = 0)+
+  facet_wrap(~driver_race)</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-12-1.png" width="672" /></p>
+</div>
 </div>
 <div id="conclusions" class="section level1">
 <h1>Conclusions</h1>
@@ -404,6 +596,15 @@ $(document).ready(function () {
 
 </script>
 
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
 
 </body>
 </html>

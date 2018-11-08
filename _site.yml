@@ -3,7 +3,7 @@ output:
   html_document:
     theme: simplex  # choose your theme here: https://bootswatch.com/
     highlight: textmate
-    mathjax: null
+    mathjax: default
     toc: true
     toc_depth: 2
     toc_float:
