@@ -15,6 +15,7 @@ A traffic stop, commonly called being pulled over, is a temporary detention of a
 On June 15, 2015, Breaion King, a 26-year-old African-American elementary school teacher was stopped by a police officer in Austin, Texas. It should have been a routine traffic stop, but escalated into a dramatic arrest. King was pulled from her car and thrown to the ground by the officer, which was caught by police dash cams. En route to jail, King engaged her escorting officer in a revealing conversation about race and law enforcement in America. This incident was later made into an Oscar nominated documentary named [Traffic Stop](https://www.hbo.com/documentaries/traffic-stop).
 
 Regardless of the behaviors of both sides, this event does reveal some racial issues in police traffic stops. Specifically, this project intends to focus on the bellowing problems:
+
 > Whether racial skewing exists in police stops.
 
 > If it exists, how does it distribute spatially.
