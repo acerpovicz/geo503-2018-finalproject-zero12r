@@ -1,7 +1,6 @@
 ---
 title: "Visualizing Racial Skewing in Police Traffic Stop"
 author: "Rui Zhu"
-subtitle: Subtitle here if desired
 output: html_document
 ---
 
