@@ -3,12 +3,12 @@ title: "Visualizing Racial Skewing in Police Traffic Stop"
 author: "Rui Zhu"
 output: html_document
 ---
-
+    
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Introduction
+# Introduction 
 A traffic stop, commonly called being pulled over, is a temporary detention of a driver of a vehicle by police to investigate a possible crime or minor violation of law (https://en.wikipedia.org/wiki/Traffic_stop). Police traffic stop is an extremely effective tool for law enforcement in various situations. In 2010, a routine traffic stop resulted in the arrest of the driver, who did several robberies in Miami-Dade County, and the recovery of a firearm. However, there are some issues existing in police traffic stop.
 
 On June 15, 2015, Breaion King, a 26-year-old African-American elementary school teacher was stopped by a police officer in Austin, Texas. It should have been a routine traffic stop, but escalated into a dramatic arrest. King was pulled from her car and thrown to the ground by the officer, which was caught by police dash cams. En route to jail, King engaged her escorting officer in a revealing conversation about race and law enforcement in America. This incident was later made into an Oscar nominated documentary named [Traffic Stop](https://www.hbo.com/documentaries/traffic-stop).
@@ -21,7 +21,7 @@ Regardless of the behaviors of both sides, this event does reveal some racial is
 
 > If it exists, how does it change over time (by year).
 
-# Materials and methods
+# Materials and methods 
 
 ###1. Load all required packages
 
@@ -34,7 +34,7 @@ library(RColorBrewer)
 library(sf)
 ```
 
-###2. Read and filter data 
+###2. Read and filter data  
 
 Read police stop data of Florida. The data is from the [Stanford Open Policing Project](https://openpolicing.stanford.edu/data/). It has records of stop date, stop location, driver race, driver gender and so on. Then generate field `year` from the field `stop_date` in the raw data. After doing this, we get the `data_filtered`.
 
@@ -47,7 +47,7 @@ data_filtered <- raw %>%
   mutate(year = substr(stop_date,1,4))
 ```
 
-###3. Tidy preprocessed data
+###3. Tidy preprocessed data 
 
 Tidy `data_filtered` to calculate the percentage of drivers (% Drivers) by race in police stop. Then we get `data1`, which is used to draw graphs later.
 ``` {r}
@@ -63,7 +63,7 @@ data1
 
 ```
 
-###4. Examine racial skewing in police stop
+###4. Examine racial skewing in police stop  
 
 For a racial group A, it is possible to compare its percentage of drivers in police stop with its percentage of population in FL to examine racial skewing in police stop. Here, we define a variable `ratio`:
 $$\displaystyle ratio = \frac{\text{% Drivers in racial group A}}{\text{% Population in racial group A}} - 1$$
@@ -94,7 +94,7 @@ data2$type <- ifelse(data2$ratio > 0, "above","below")
 data2
 ```
 
-###5. Join police stop data and FL spatial data
+###5. Join police stop data and FL spatial data  
 
 In order to explore racial skewing in police stop spatially, we have to join our police stop data `data_filtered` and spatial data `map`. Then calculate the percentage of drivers in different racial groups by county. By dong this, we get `map_data`.
 ``` {r}
@@ -116,7 +116,7 @@ map_data <- left_join(map, data_bycounty, by=c("GEOID" = "county_fips"))
 head(map_data)
 ```
 
-###6. Examine racial skewing in police stop spatially
+###6. Examine racial skewing in police stop spatially  
 
 Based on the dataset `map_data` and above equation evaluating `ratio`, we calculate `ratio` for each racial group by county.
 ```{r}
@@ -137,7 +137,7 @@ map_data2$ratio <- map_data2$ratio - 1
 head(map_data2)
 ```
 
-# Results
+# Results 
 
 After data process, we have four datasets:
 
@@ -192,8 +192,8 @@ ggplot(map_data2) +
   scale_fill_gradient2(low = "red",mid = "white",high = "blue",midpoint = 0)+
   facet_wrap(~driver_race)
 ```
-
-# Conclusions
+   
+# Conclusions   
 
 What have you learned?  Are there any broader implications?
 
